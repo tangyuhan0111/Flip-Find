@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using TMPro;
 
 public class MemoryGameManager : MonoBehaviour
 {
@@ -12,10 +13,10 @@ public class MemoryGameManager : MonoBehaviour
     public List<Sprite> faceSprites;
 
     [Header("Grid Settings")]
-    [Min(2)] public int gridSize = 4;          // 4 -> 4x4, 6 -> 6x6
-    public bool autoApplyGridLayout = true;    // ×Ô¶¯ÉèÖÃÁÐÊý=gridSize
-    public bool autoCellSize = true;           // ×Ô¶¯¼ÆËã cell size ÈÃÍø¸ñÆÌÂú
-    public bool keepSquareCells = true;        // ÈÃ¿¨ÅÆ±£³ÖÕý·½ÐÎ
+    [Min(2)] public int gridSize = 4; 
+    public bool autoApplyGridLayout = true;    
+    public bool autoCellSize = true;          
+    public bool keepSquareCells = true;  
 
     [Header("Tuning")]
     public float previewSeconds = 3f;
@@ -35,15 +36,54 @@ public class MemoryGameManager : MonoBehaviour
     private int matchedPairs = 0;
     private int totalPairs = 0;
 
+    [Header("Timer UI")]
+    public TMP_Text timerText;        // HUD
+    public TMP_Text winTimeText;      // WinPanel ä¸Šæ˜¾ç¤ºæœ€ç»ˆæ—¶é—´
+
+    private float elapsedTime;
+    private bool timerRunning;
+
+    [Header("Stats UI (TMP)")]
+    public TMP_Text attemptsText;     // HUD å¯é€‰ï¼ˆä¸æƒ³æ˜¾ç¤ºå°±ç•™ç©ºï¼‰
+    public TMP_Text matchesText;      // HUD å¯é€‰
+    public TMP_Text accuracyText;     // HUD å¯é€‰
+
+    public TMP_Text winAttemptsText;  // WinPanel
+    public TMP_Text winMatchesText;
+    public TMP_Text winAccuracyText;
+
+    private int attempts;   // ç¿»å¼€ä¸¤å¼ ç®—ä¸€æ¬¡
+    private int matches;    // é…å¯¹æˆåŠŸæ¬¡æ•°
+
     void Start()
     {
         StartLevel();
     }
 
-    // Èç¹ûÄãÊÇ¡°µã Start °´Å¥²Å¿ªÊ¼¡±£¬¾Í°Ñ Start() ÀïµÄ StartLevel() É¾µô
-    // È»ºóÔÚ°´Å¥ OnClick() Àïµ÷ÓÃ StartLevel()
+    void Update()
+    {
+        if (!timerRunning) return;
+
+        elapsedTime += Time.deltaTime;
+        UpdateTimerUI();
+    }
+
+    void UpdateTimerUI()
+    {
+        if (timerText == null) return;
+
+        int totalSeconds = Mathf.FloorToInt(elapsedTime);
+        int minutes = totalSeconds / 60;
+        int seconds = totalSeconds % 60;
+
+        timerText.text = $"{minutes:00}:{seconds:00}";
+    }
+
     public void StartLevel()
     {
+        if (winTimeText != null)
+            winTimeText.text = "";
+
         int totalCards = gridSize * gridSize;
 
         if (totalCards % 2 != 0)
@@ -68,6 +108,18 @@ public class MemoryGameManager : MonoBehaviour
 
         if (winPanel != null) winPanel.SetActive(false);
 
+        attempts = 0;
+        matches = 0;
+        UpdateStatsUI();
+
+        if (winAttemptsText != null) winAttemptsText.text = "";
+        if (winMatchesText != null) winMatchesText.text = "";
+        if (winAccuracyText != null) winAccuracyText.text = "";
+
+        elapsedTime = 0f;
+        timerRunning = true;
+        UpdateTimerUI(); // ç«‹åˆ»åˆ·æ–°ä¸€æ¬¡æ˜¾ç¤º
+
         ClearBoard();
         BuildBoard(pairCount);
         StartCoroutine(PreviewThenHide());
@@ -88,7 +140,6 @@ public class MemoryGameManager : MonoBehaviour
 
         if (!autoCellSize) return;
 
-        // ¿ÉÓÃÇøÓò = RectTransform µÄ¿í¸ß - padding - spacing
         float width = rect.rect.width;
         float height = rect.rect.height;
 
@@ -164,6 +215,7 @@ public class MemoryGameManager : MonoBehaviour
 
     public void TryFlip(CardView card)
     {
+        if (card == first) return;
         if (inputLocked) return;
 
         card.ShowFront();
@@ -175,6 +227,8 @@ public class MemoryGameManager : MonoBehaviour
         }
 
         second = card;
+        attempts++;          // âœ… ç¿»å¼€ä¸¤å¼ ç®—ä¸€æ¬¡å°è¯•
+        UpdateStatsUI();     // å¯é€‰ï¼šç«‹åˆ»åˆ·æ–° HUD
         inputLocked = true;
         StartCoroutine(CheckMatch());
     }
@@ -185,6 +239,10 @@ public class MemoryGameManager : MonoBehaviour
         {
             first.SetMatched();
             second.SetMatched();
+
+            matches++;
+            UpdateStatsUI();
+
             PlaySfx(matchClip);
 
             matchedPairs++;
@@ -230,18 +288,42 @@ public class MemoryGameManager : MonoBehaviour
 
     void ShowWin()
     {
-        inputLocked = true; // ½ûÖ¹¼ÌÐø·­ÅÆ
+        inputLocked = true;
+        timerRunning = false;
         if (winPanel != null) winPanel.SetActive(true);
+        if (winTimeText != null)
+        {
+            int totalSeconds = Mathf.FloorToInt(elapsedTime);
+            int minutes = totalSeconds / 60;
+            int seconds = totalSeconds % 60;
+            winTimeText.text = $"Time: {minutes:00}:{seconds:00}";
+        }
+        float acc = (attempts > 0) ? (matches / (float)attempts) : 0f;
+        int accPercent = Mathf.RoundToInt(acc * 100f);
+
+        if (winAttemptsText != null) winAttemptsText.text = $"Attempts: {attempts}";
+        if (winMatchesText != null) winMatchesText.text = $"Matches: {matches}";
+        if (winAccuracyText != null) winAccuracyText.text = $"Accuracy: {accPercent}%";
     }
 
     public void GoToNextLevel()
     {
-        // SceneManager.LoadScene("Level2Scene");
-        StartLevel();
+        SceneManager.LoadScene("Level2Scene");
+        // StartLevel();
     }
 
     public void GoToMainMenu()
     {
         SceneManager.LoadScene("MainMenu");
+    }
+
+    void UpdateStatsUI()
+    {
+        float acc = (attempts > 0) ? (matches / (float)attempts) : 0f;
+        int accPercent = Mathf.RoundToInt(acc * 100f);
+
+        if (attemptsText != null) attemptsText.text = $"Attempts: {attempts}";
+        if (matchesText != null) matchesText.text = $"Matches: {matches}";
+        if (accuracyText != null) accuracyText.text = $"Accuracy: {accPercent}%";
     }
 }
