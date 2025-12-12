@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: dbbd0d0ecd2811e488fb3962eadbde8e
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 222908
+  packageName: Animal Cube (Duck Series) - 2D Asset
+  packageVersion: 1.2
+  assetPath: Assets/Hisa Cube Animal/Demo/Script/CubeShow.cs
+  uploadId: 625589
