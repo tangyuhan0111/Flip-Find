@@ -55,6 +55,14 @@ public class MemoryGameManager : MonoBehaviour
     private int attempts;   // 翻开两张算一次
     private int matches;    // 配对成功次数
 
+    [Header("Scene Flow")]
+    [SerializeField] private string nextLevelSceneName = "";
+
+    [Header("Accuracy Colors")]
+    public Color accuracyHigh = Color.green;   // >= 80%
+    public Color accuracyMid  = Color.blue;    // 60–79%
+    public Color accuracyLow  = Color.red;     // < 60%
+
     void Start()
     {
         StartLevel();
@@ -303,14 +311,30 @@ public class MemoryGameManager : MonoBehaviour
 
         if (winAttemptsText != null) winAttemptsText.text = $"Attempts: {attempts}";
         if (winMatchesText != null) winMatchesText.text = $"Matches: {matches}";
-        if (winAccuracyText != null) winAccuracyText.text = $"Accuracy: {accPercent}%";
+        // if (winAccuracyText != null) winAccuracyText.text = $"Accuracy: {accPercent}%";
+        if (winAccuracyText != null)
+        {
+            winAccuracyText.text = $"Accuracy: {accPercent}%";
+            ApplyAccuracyColor(winAccuracyText, accPercent);
+        }
     }
 
     public void GoToNextLevel()
     {
-        SceneManager.LoadScene("Level2Scene");
-        // StartLevel();
-    }
+        if (string.IsNullOrWhiteSpace(nextLevelSceneName))
+        {
+            RestartLevel();
+            return;
+        }
+
+        if (SceneManager.GetActiveScene().name == nextLevelSceneName)
+        {
+            RestartLevel();
+            return;
+        }
+
+        SceneManager.LoadScene(nextLevelSceneName);
+        }
 
     public void GoToMainMenu()
     {
@@ -325,5 +349,21 @@ public class MemoryGameManager : MonoBehaviour
         if (attemptsText != null) attemptsText.text = $"Attempts: {attempts}";
         if (matchesText != null) matchesText.text = $"Matches: {matches}";
         if (accuracyText != null) accuracyText.text = $"Accuracy: {accPercent}%";
+    }
+
+    public void RestartLevel()
+    {
+        Time.timeScale = 1f;
+        if (winPanel != null) winPanel.SetActive(false);
+        StartLevel();
+    }
+
+    void ApplyAccuracyColor(TMP_Text text, int accPercent)
+    {
+        if (text == null) return;
+
+        if (accPercent >= 70) text.color = accuracyHigh;
+        else if (accPercent >= 40) text.color = accuracyMid;
+        else text.color = accuracyLow;
     }
 }
